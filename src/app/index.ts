@@ -3,9 +3,12 @@ import { expressMiddleware } from '@apollo/server/express4';
 import express from 'express';
 import { prismaClient } from '../clients/db';
 import { User } from './user';
+import cors from "cors"
 
 export async function initServer() {
     const app = express();
+
+    app.use(cors())
 
     const server = new ApolloServer({
         //schema's
