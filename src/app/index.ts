@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import express from 'express';
 import { User } from './user';
+import { Tweet } from './tweet'
 import cors from "cors"
 import { graphqlContext } from '../interfaces';
 
@@ -14,15 +15,27 @@ export async function initServer() {
         //schema's
         typeDefs: `
             ${User.types}
+            ${Tweet.types}
 
             type Query {
                 ${User.queries}
+                ${Tweet.queries}
+            }
+
+            type Mutation {
+                ${Tweet.mutations}
             }
         `,
         resolvers: {
             Query: {
                 ...User.resolvers.queries,
+                ...Tweet.resolvers.queries
             },
+            Mutation: {
+                ...Tweet.resolvers.mutations
+            },
+            ...Tweet.resolvers.extraResolvers,
+            ...User.resolvers.extraResolvers,
         }
     });
     // Note you must call `start()` on the `ApolloServer`
