@@ -5,10 +5,12 @@ import { User } from './user';
 import { Tweet } from './tweet'
 import cors from "cors"
 import { graphqlContext } from '../interfaces';
+import dotenv from "dotenv"
+
+dotenv.config()
 
 export async function initServer() {
     const app = express();
-
     app.use(cors())
 
     const server = new ApolloServer<graphqlContext>({
