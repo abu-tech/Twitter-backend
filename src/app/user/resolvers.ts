@@ -1,55 +1,13 @@
-import axios from "axios"
-import { prismaClient } from "../../clients/db"
 import JWTService from "../../services/jwt"
 import { graphqlContext } from "../../interfaces";
 import { User } from "@prisma/client";
-
-interface GoogleTokenResult {
-    iss?: string;
-    nbf?: string;
-    aud?: string;
-    sub?: string;
-    email: string;
-    email_verified: string;
-    azp?: string;
-    name?: string;
-    picture?: string;
-    given_name: string;
-    family_name?: string;
-    iat?: string;
-    exp?: string;
-    jti?: string;
-    alg?: string;
-    kid?: string;
-    typ?: string;
-}
+import UserService from "../../services/user";
+import TweetService from "../../services/tweet";
 
 
 const queries = {
     verifyGoogleToken: async (parent: any, { token }: { token: string }) => {
-        const googleOauthUrl = new URL("https://oauth2.googleapis.com/tokeninfo")
-        googleOauthUrl.searchParams.set("id_token", token)
-
-        const { data } = await axios.get<GoogleTokenResult>(googleOauthUrl.toString(), { responseType: "json" })
-
-        let user = await prismaClient.user.findUnique({
-            where: { email: data.email }
-        })
-
-        //save the user in the database
-        if (!user) {
-            user = await prismaClient.user.create({
-                data: {
-                    firstName: data.given_name,
-                    lastName: data.family_name,
-                    email: data.email,
-                    profileImage: data.picture
-                },
-            })
-        }
-
-        //create the jwt for the user
-        const authToken = JWTService.generateTokenForUser(user)
+        const authToken = await UserService.verifyGoogleAuthToken(token)
 
         return authToken
     },
@@ -59,15 +17,24 @@ const queries = {
             return null
         }
 
-        const id = JWTService.decodeToken(ctx.userToken)?.id
-        const currentUser = await prismaClient.user.findUnique({ where: { id } })
+        const userId = JWTService.decodeToken(ctx.userToken)?.id
+
+        if (!userId) {
+            throw new Error("Undefined User")
+        }
+
+        const currentUser = await UserService.getUserById(userId)
+
+        if (!currentUser) {
+            throw new Error("No User Found!")
+        }
 
         return currentUser
     },
 
     getUserById: async (parent: any, { id }: { id: string }, ctx: graphqlContext) => {
 
-        const user = await prismaClient.user.findUnique({ where: { id } })
+        const user = await UserService.getUserById(id)
 
         if (!user) {
             throw new Error("No User Found!")
@@ -79,7 +46,7 @@ const queries = {
 
 const extraResolvers = {
     User: {
-        tweets: (parent: User) => prismaClient.tweet.findMany({ where: { authorId: parent.id } })
+        tweets: async (parent: User) => await TweetService.getAllTweets(parent.id)
     }
 }
 
