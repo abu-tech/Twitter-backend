@@ -56,6 +56,43 @@ class UserService {
 
         return user
     }
+
+    public static async followUser(from: string, to: string) {
+        return await prismaClient.follows.create({
+            data: {
+                follower: { connect: { id: from } },
+                following: { connect: { id: to } }
+            }
+        })
+    }
+
+    public static async unfollowUser(from: string, to: string) {
+        return await prismaClient.follows.delete({
+            where: { followerId_followingId: { followerId: from, followingId: to } }
+        })
+    }
+
+    public static async getFollowers(userId: string) {
+        const result = await prismaClient.follows.findMany({
+            where: { followingId: userId },
+            include: { follower: true }
+        })
+
+        const followers = result.map((el) => el.follower)
+
+        return followers
+    }
+
+    public static async getFollowing(userId: string) {
+        const result = await prismaClient.follows.findMany({
+            where: { followerId: userId },
+            include: { following: true }
+        })
+
+        const following = result.map((el) => el.following)
+
+        return following
+    }
 }
 
 export default UserService

@@ -3,6 +3,7 @@ import { graphqlContext } from "../../interfaces";
 import { User } from "@prisma/client";
 import UserService from "../../services/user";
 import TweetService from "../../services/tweet";
+import { prismaClient } from "../../clients/db";
 
 
 const queries = {
@@ -44,10 +45,48 @@ const queries = {
     },
 }
 
+const mutations = {
+    followUser: async (parent: any, { to }: { to: string }, ctx: graphqlContext) => {
+        if (!ctx.userToken) {
+            throw new Error("Not Authenticated")
+        }
+
+        const userId = JWTService.decodeToken(ctx.userToken)?.id
+
+        if (!userId) {
+            throw new Error("Undefined User")
+        }
+
+        await UserService.followUser(userId, to)
+
+        return true
+    },
+
+    unfollowUser: async (parent: any, { to }: { to: string }, ctx: graphqlContext) => {
+        if (!ctx.userToken) {
+            throw new Error("Not Authenticated")
+        }
+
+        const userId = JWTService.decodeToken(ctx.userToken)?.id
+
+        if (!userId) {
+            throw new Error("Undefined User")
+        }
+
+        await UserService.unfollowUser(userId, to)
+
+        return true
+    },
+}
+
 const extraResolvers = {
     User: {
-        tweets: async (parent: User) => await TweetService.getAllTweets(parent.id)
+        tweets: async (parent: User) => await TweetService.getAllTweets(parent.id),
+
+        followers: async (parent: User) => await UserService.getFollowers(parent.id),
+
+        following: async (parent: User) => await UserService.getFollowing(parent.id)
     }
 }
 
-export const resolvers = { queries, extraResolvers }
+export const resolvers = { queries, extraResolvers, mutations }
