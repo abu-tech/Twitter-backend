@@ -85,7 +85,15 @@ const extraResolvers = {
 
         followers: async (parent: User) => await UserService.getFollowers(parent.id),
 
-        following: async (parent: User) => await UserService.getFollowing(parent.id)
+        following: async (parent: User) => await UserService.getFollowing(parent.id),
+
+        recommendedUsers: async (parent: User, args: any, ctx: graphqlContext) => {
+            if (!ctx.userToken) return []
+
+            const res = await UserService.getRecommendations(parent.id)
+
+            return res
+        }
     }
 }
 
