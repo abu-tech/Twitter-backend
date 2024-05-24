@@ -2,6 +2,7 @@ import axios from "axios"
 import { prismaClient } from "../clients/db";
 import JWTService from "./jwt";
 import { User } from "@prisma/client";
+import { redisClient } from "../clients/redis";
 
 interface GoogleTokenResult {
     iss?: string;
@@ -59,6 +60,9 @@ class UserService {
     }
 
     public static async followUser(from: string, to: string) {
+        //clear the recommended user cache
+        await redisClient.del(`RECOMMENDED_USERS:${from}`)
+
         return await prismaClient.follows.create({
             data: {
                 follower: { connect: { id: from } },
@@ -68,6 +72,9 @@ class UserService {
     }
 
     public static async unfollowUser(from: string, to: string) {
+        //clear the recommended user cache
+        await redisClient.del(`RECOMMENDED_USERS:${from}`)
+
         return await prismaClient.follows.delete({
             where: { followerId_followingId: { followerId: from, followingId: to } }
         })
@@ -99,6 +106,12 @@ class UserService {
         const myFollowings: User[] = await this.getFollowing(userId)
         const recommendedUsers: User[] = []
 
+        //find if the we have cache value already?
+        const cachedValue = await redisClient.get(`RECOMMENDED_USERS:${userId}`)
+        if (cachedValue) {
+            return cachedValue
+        }
+
         for (const following of myFollowings) {
             const followingsOfMyFollowing: User[] = await this.getFollowing(following.id)
             followingsOfMyFollowing.map((item: User) => {
@@ -107,6 +120,9 @@ class UserService {
                 }
             })
         }
+
+        //cache the result
+        await redisClient.set(`RECOMMENDED_USERS:${userId}`, recommendedUsers)
 
         return recommendedUsers
     }

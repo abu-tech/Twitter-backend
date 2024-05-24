@@ -9,6 +9,7 @@ export const types = `#graphql
         id: ID!,
         content: String!,
         imageURL: String,
-        author: User
+        author: User,
+        createdAt: String
     }
 `
