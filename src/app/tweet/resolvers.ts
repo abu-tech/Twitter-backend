@@ -1,10 +1,11 @@
 import { Tweet } from "@prisma/client";
 import { graphqlContext } from "../../interfaces";
 import JWTService from "../../services/jwt";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import UserService from "../../services/user";
 import TweetService, { CreateTweetData } from "../../services/tweet";
+import { prismaClient } from "../../clients/db";
 
 const s3Client = new S3Client({
     region: process.env.AWS_REGION,
@@ -52,6 +53,26 @@ const mutations = {
         const tweet = await TweetService.createTweet(payload)
 
         return tweet
+    },
+
+    deleteImageFromS3: async (parent: any, { imageKey }: { imageKey: string }, ctx: graphqlContext) => {
+        if (!ctx.userToken) {
+            throw new Error("You are not Authenticated!")
+        }
+
+        const deleteCommand = new DeleteObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET,
+            Key: imageKey
+        })
+
+        //delete the image
+        const { DeleteMarker } = await s3Client.send(deleteCommand)
+
+        if (!DeleteMarker) {
+            throw new Error("Error Deleting Image")
+        }
+
+        return true
     }
 }
 
